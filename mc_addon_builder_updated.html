@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MC Addon Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{
+  --ab:#2c2c2c; --abw:48px;
+  --panel:#252526; --panelw:240px;
+  --ed:#1e1e1e; --top:#2d2e30;
+  --border:#3c3c3c; --bord2:#4a4a4a;
+  --acc:#4ade80; --acc2:#22d3ee;
+  --text:#d4d4d4; --text2:#9d9d9d; --text3:#585858;
+  --hov:rgba(255,255,255,.06); --sel:rgba(74,222,128,.13);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--ed);color:var(--text);
+  font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;
+  display:flex;flex-direction:column}
+
+/* TOPBAR */
+#topbar{height:40px;background:var(--top);border-bottom:1px solid #1c1c1c;
+  display:flex;align-items:center;padding:0 8px;gap:8px;flex-shrink:0;z-index:200}
+.logo{font-family:'Courier New',monospace;font-size:10px;font-weight:700;
+  color:var(--acc);letter-spacing:.08em;padding:0 4px;
+  text-shadow:0 0 10px rgba(74,222,128,.3)}
+.proj-badge{background:rgba(255,255,255,.07);border:1px solid var(--bord2);
+  border-radius:4px;padding:3px 10px;font-size:12px;color:var(--text2)}
+.proj-badge b{color:var(--text)}
+.tb-sp{flex:1}
+.tb-btn{background:rgba(255,255,255,.07);border:1px solid var(--bord2);border-radius:4px;
+  padding:4px 11px;color:var(--text2);cursor:pointer;font-size:12px;
+  transition:.15s;font-family:inherit}
+.tb-btn:hover{background:rgba(255,255,255,.12);color:var(--text)}
+.tb-pri{background:var(--acc);border:none;border-radius:4px;padding:4px 14px;
+  color:#000;font-weight:700;cursor:pointer;font-size:12px;
+  transition:.15s;font-family:inherit}
+.tb-pri:hover{background:#6ee79b}
+.tb-pri:disabled{background:var(--border);color:var(--text3);cursor:not-allowed}
+
+/* APP BODY */
+#appbody{display:flex;flex:1;overflow:hidden;position:relative}
+
+/* ACTIVITY BAR */
+#actbar{width:var(--abw);min-width:var(--abw);background:var(--ab);
+  border-right:1px solid #1c1c1c;display:flex;flex-direction:column;
+  flex-shrink:0;z-index:100}
+.ab-top{flex:1;display:flex;flex-direction:column;padding-top:4px}
+.ab-bot{flex-shrink:0;padding-bottom:4px}
+.ab-icon{width:var(--abw);height:var(--abw);display:flex;align-items:center;
+  justify-content:center;cursor:pointer;font-size:19px;position:relative;
+  border-left:2px solid transparent;color:rgba(255,255,255,.38);transition:.15s}
+.ab-icon:hover{color:rgba(255,255,255,.75);background:var(--hov)}
+.ab-icon.act{color:var(--text);border-color:var(--acc);background:rgba(74,222,128,.07)}
+.ab-tip{position:absolute;left:calc(var(--abw) + 8px);top:50%;transform:translateY(-50%);
+  background:#3a3a3a;border:1px solid var(--bord2);border-radius:4px;padding:4px 10px;
+  font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;
+  transition:opacity .15s;z-index:999;color:var(--text)}
+.ab-icon:hover .ab-tip{opacity:1}
+.ab-dot{position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%}
+.dot-ok{background:var(--acc)}.dot-warn{background:#f59e0b}.dot-err{background:#f87171}
+
+/* PANEL — desktop default: visible */
+#panel{width:var(--panelw);min-width:var(--panelw);background:var(--panel);
+  border-right:1px solid #1c1c1c;display:flex;flex-direction:column;
+  overflow:hidden;flex-shrink:0;transition:width .22s,min-width .22s,opacity .2s}
+#panel.closed{width:0!important;min-width:0!important;opacity:0;pointer-events:none}
+#phdr{height:35px;display:flex;align-items:center;padding:0 12px;
+  border-bottom:1px solid var(--border);flex-shrink:0;gap:8px}
+#ptitle{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text3);flex:1;font-family:'Courier New',monospace;white-space:nowrap;overflow:hidden}
+#pclose{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;
+  line-height:1;padding:3px 5px;transition:.1s;border-radius:3px}
+#pclose:hover{color:var(--text);background:var(--hov)}
+#pbody{flex:1;overflow-y:auto;overflow-x:hidden}
+#pbody::-webkit-scrollbar{width:3px}
+#pbody::-webkit-scrollbar-thumb{background:var(--bord2);border-radius:2px}
+
+/* PANEL ITEMS */
+.ps{padding:5px 0}
+.ps-title{padding:8px 12px 3px;font-size:10px;color:var(--text3);
+  letter-spacing:.1em;text-transform:uppercase;font-family:'Courier New',monospace}
+.pi{display:flex;align-items:center;gap:6px;padding:5px 12px;cursor:pointer;
+  color:var(--text2);font-size:12px;transition:.1s;border-left:2px solid transparent;
+  min-height:27px;overflow:hidden}
+.pi:hover{background:var(--hov);color:var(--text)}
+.pi.sel{background:var(--sel);color:var(--acc);border-color:var(--acc)}
+.pi-ico{font-size:12px;flex-shrink:0;width:15px;text-align:center}
+.pi-lbl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pi-tag{font-size:9px;padding:1px 5px;border-radius:3px;flex-shrink:0;
+  background:rgba(255,255,255,.1);color:var(--text3)}
+.pi-tag.ok{background:rgba(74,222,128,.2);color:var(--acc)}
+.pi-tag.warn{background:rgba(245,158,11,.18);color:#f59e0b}
+.pi-del{background:none;border:none;color:var(--text3);cursor:pointer;
+  font-size:13px;padding:0 2px;line-height:1;transition:.1s;flex-shrink:0}
+.pi-del:hover{color:#f87171}
+.p-add{display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:8px 12px;cursor:pointer;color:var(--text3);font-size:12px;
+  transition:.1s;border:none;background:none;font-family:inherit;width:100%}
+.p-add:hover{color:var(--acc);background:var(--hov)}
+.pdiv{height:1px;background:var(--border);margin:3px 0}
+
+/* RESIZE */
+#rh{width:4px;flex-shrink:0;cursor:ew-resize;background:transparent;
+  border-right:1px solid var(--border);transition:background .1s}
+#rh:hover,#rh.drag{background:var(--acc);border-color:var(--acc)}
+#panel.closed + #rh{display:none}
+
+/* EDITOR */
+#editor{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#etabs{height:35px;background:#252526;border-bottom:1px solid var(--border);
+  display:flex;align-items:stretch;flex-shrink:0;overflow-x:auto;overflow-y:hidden}
+#etabs::-webkit-scrollbar{height:0}
+.etab{height:100%;padding:0 18px;display:flex;align-items:center;gap:6px;
+  font-size:12px;color:var(--text3);cursor:pointer;white-space:nowrap;
+  border-right:1px solid var(--border);border-bottom:2px solid transparent;
+  transition:.1s;flex-shrink:0}
+.etab:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.etab.sel{color:var(--text);background:var(--ed);border-bottom-color:var(--acc)}
+#econtent{flex:1;overflow-y:auto;padding:22px 26px}
+#econtent::-webkit-scrollbar{width:6px}
+#econtent::-webkit-scrollbar-thumb{background:var(--bord2);border-radius:3px}
+
+/* STATUS BAR */
+#sb{height:22px;background:#3d8b5e;display:flex;align-items:center;
+  justify-content:space-between;padding:0 10px;font-size:11px;
+  color:rgba(0,0,0,.75);font-weight:600;flex-shrink:0;z-index:100}
+
+/* OVERLAY */
+#ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:150;backdrop-filter:blur(2px)}
+#ov.show{display:block}
+
+/* CONTENT ELEMENTS */
+.sec-h{font-size:17px;font-weight:700;color:#fff;margin-bottom:3px}
+.sec-s{color:var(--text2);font-size:12px;margin-bottom:16px;line-height:1.5}
+.card{background:#2a2a2a;border:1px solid var(--border);border-radius:7px;
+  padding:14px;margin-bottom:12px}
+.card-h{font-size:11px;font-weight:700;color:var(--text);margin-bottom:11px;
+  display:flex;align-items:center;gap:8px}
+.fg{display:grid;gap:11px;margin-bottom:12px}
+.fg2{grid-template-columns:1fr 1fr}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld label{font-size:10px;color:var(--text3);font-weight:600;
+  letter-spacing:.07em;text-transform:uppercase}
+.fld input,.fld select,.fld textarea{
+  background:#373737;border:1px solid var(--bord2);border-radius:4px;
+  padding:7px 9px;color:var(--text);font-size:12px;font-family:inherit;transition:.15s}
+.fld input:focus,.fld select:focus,.fld textarea:focus{
+  outline:none;border-color:var(--acc);background:#3d3d3d}
+.fld select option{background:#373737}
+.fld textarea{resize:vertical;min-height:60px;
+  font-family:'Consolas','Courier New',monospace;font-size:11px}
+.hint{font-size:10px;color:var(--text3);margin-top:2px}
+.btn{padding:5px 12px;border-radius:4px;border:none;cursor:pointer;
+  font-size:12px;font-weight:600;transition:.15s;font-family:inherit}
+.btn-g{background:var(--acc);color:#000}.btn-g:hover{background:#6ee79b}
+.btn-s{background:rgba(255,255,255,.07);border:1px solid var(--bord2);color:var(--text2)}
+.btn-s:hover{color:var(--text);background:rgba(255,255,255,.11)}
+.btn-r{background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.28);color:#f87171}
+.btn-r:hover{background:rgba(239,68,68,.22)}
+.sep{height:1px;background:var(--border);margin:12px 0}
+.row{display:flex;align-items:center;gap:8px}
+.mt8{margin-top:8px}.mt12{margin-top:12px}
+.empty{display:flex;flex-direction:column;align-items:center;
+  justify-content:center;min-height:200px;color:var(--text3);gap:10px}
+.empty-ico{font-size:40px}
+
+/* UUID */
+.uuid-list{display:flex;flex-direction:column;gap:5px}
+.ur{display:flex;align-items:center;gap:7px;background:#303030;
+  border:1px solid var(--border);border-radius:5px;padding:6px 10px}
+.ul{font-size:10px;color:var(--text3);width:105px;flex-shrink:0;
+  font-family:'Courier New',monospace}
+.uv{flex:1;font-family:'Courier New',monospace;font-size:10px;
+  color:var(--acc2);word-break:break-all;line-height:1.4}
+.ue{color:var(--text3);font-style:italic;font-size:10px}
+.bxs{padding:3px 7px;font-size:10px;border-radius:3px;border:1px solid var(--bord2);
+  background:transparent;color:var(--text3);cursor:pointer;transition:.15s;
+  font-family:inherit;white-space:nowrap}
+.bxs:hover{border-color:var(--acc);color:var(--acc)}
+.bxs.ok{border-color:var(--acc2);color:var(--acc2)}
+
+/* CODE BOX */
+.cbox{background:#191919;border:1px solid var(--border);border-radius:6px;
+  overflow:hidden;margin-top:10px}
+.cx-h{display:flex;align-items:center;justify-content:space-between;
+  padding:5px 11px;background:#222;border-bottom:1px solid var(--border)}
+.cx-lang{font-size:10px;color:var(--acc2);font-family:'Courier New',monospace;letter-spacing:.1em}
+.cx-body{padding:11px;overflow:auto;max-height:300px}
+.cx-body pre{font-family:'Consolas','Courier New',monospace;font-size:11px;
+  line-height:1.7;color:#d4d4d4;white-space:pre}
+.cx-body textarea{width:100%;min-height:300px;background:transparent;border:none;
+  outline:none;font-family:'Consolas','Courier New',monospace;font-size:11px;
+  line-height:1.7;color:#d4d4d4;resize:vertical}
+
+/* MINI TABS */
+.mt{display:flex;border-bottom:1px solid var(--border)}
+.mt-t{padding:5px 12px;font-size:11px;color:var(--text3);cursor:pointer;
+  border-bottom:2px solid transparent;transition:.1s}
+.mt-t:hover{color:var(--text)}.mt-t.sel{color:var(--acc);border-color:var(--acc)}
+
+/* TEXTURE */
+.tex2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.uz{border:1.5px dashed var(--bord2);border-radius:6px;padding:16px 10px;
+  text-align:center;cursor:pointer;transition:.15s;position:relative;overflow:hidden}
+.uz:hover{border-color:var(--acc);background:rgba(74,222,128,.03)}
+.uz.filled{border-style:solid;border-color:var(--acc)}
+.uz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.uz img{max-width:70px;max-height:56px;image-rendering:pixelated;
+  display:block;margin:0 auto 6px}
+.uz-l{font-size:11px;color:var(--text3)}
+.uz.filled .uz-l{color:var(--acc);font-size:10px}
+.uz-h{font-size:9px;color:var(--text3);margin-top:3px}
+
+/* FILE TREE */
+.ti{display:flex;align-items:center;gap:5px;padding:4px 10px;cursor:pointer;
+  font-size:11px;color:var(--text2);transition:.08s;border-left:2px solid transparent;
+  font-family:'Consolas','Courier New',monospace;white-space:nowrap;overflow:hidden}
+.ti:hover{background:var(--hov);color:var(--text)}
+.ti.sel{color:var(--acc);border-color:var(--acc);background:var(--sel)}
+.ti.dir{color:#d7ba7d;cursor:default;font-weight:700}
+.ti.dir:hover{background:transparent}
+.ti.d1{padding-left:20px}.ti.d2{padding-left:30px}
+
+/* EXPORT */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.stat{background:#2a2a2a;border:1px solid var(--border);border-radius:7px;
+  padding:12px;text-align:center}
+.stat-n{font-size:22px;font-weight:700;color:var(--acc);font-family:'Courier New',monospace}
+.stat-l{font-size:10px;color:var(--text2);margin-top:2px}
+.dl-btn{width:100%;padding:11px;background:var(--acc);color:#000;font-weight:700;
+  font-size:14px;border:none;border-radius:7px;cursor:pointer;transition:.15s;font-family:inherit}
+.dl-btn:hover{background:#6ee79b;transform:translateY(-1px)}
+.dl-btn:disabled{background:var(--border);color:var(--text3);cursor:not-allowed;transform:none}
+.wbox{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);
+  border-radius:6px;padding:11px 14px;margin-bottom:12px}
+.wbox h4{color:#f59e0b;margin-bottom:6px;font-size:11px}
+.wbox ul{padding-left:14px;font-size:11px;color:var(--text2);line-height:1.9}
+.okbox{background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.18);
+  border-radius:6px;padding:11px 14px;margin-bottom:10px}
+.okbox h4{color:var(--acc);margin-bottom:5px;font-size:11px}
+.okbox ul{padding-left:14px;font-size:11px;color:var(--text2);line-height:1.9}
+.ebox{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);
+  border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#f87171}
+.al{border-radius:6px;padding:10px 13px;font-size:12px;margin-bottom:10px}
+.al-i{background:rgba(14,165,233,.09);border:1px solid rgba(14,165,233,.2);color:#38bdf8}
+
+/* MOBILE */
+@media(max-width:768px){
+  #appbody{flex-direction:column}
+  #actbar{
+    width:100%;height:52px;min-width:unset;
+    flex-direction:row;order:3;
+    border-right:none;border-top:1px solid #1c1c1c;flex-shrink:0}
+  .ab-top{flex-direction:row;justify-content:space-around;flex:1;padding-top:0}
+  .ab-bot{flex-shrink:0;padding-bottom:0}
+  .ab-icon{width:52px;height:52px;border-left:none;
+    border-top:2px solid transparent;border-bottom:none}
+  .ab-icon.act{border-top-color:var(--acc);border-left:none}
+  .ab-tip{display:none!important}
+  #panel{
+    position:fixed;bottom:52px;left:0;right:0;
+    width:100%!important;min-width:unset!important;
+    height:65vh;border-right:none;
+    border-top:1px solid var(--border);border-radius:14px 14px 0 0;
+    transform:translateY(110%);transition:transform .25s ease;
+    opacity:1!important;pointer-events:none;z-index:160}
+  #panel.mob-open{transform:translateY(0);pointer-events:auto}
+  /* on mobile, closed = slidedown, not width 0 */
+  #panel.closed{width:100%!important;min-width:unset!important;transform:translateY(110%)}
+  #editor{order:1}
+  #rh{display:none}
+  .fg2,.tex2,.stats{grid-template-columns:1fr 1fr}
+  #econtent{padding:14px}
+}
+@media(max-width:480px){
+  .fg2,.tex2{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div id="topbar">
+  <div class="logo">⬛ MC ADDON</div>
+  <div class="proj-badge">📁 <b id="hdr-ns">myaddon</b></div>
+  <div class="tb-sp"></div>
+  <button class="tb-btn" onclick="resetAll()">↺ Reset</button>
+  <button class="tb-pri" id="hdr-dl" onclick="downloadAddon()">↓ Download</button>
+</div>
+
+<div id="appbody">
+  <div id="actbar">
+    <div class="ab-top" id="ab-icons"></div>
+    <div class="ab-bot">
+      <div class="ab-icon" onclick="downloadAddon()">
+        📥<div class="ab-tip">Download .mcaddon</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ov" onclick="closeMob()"></div>
+
+  <div id="panel">
+    <div id="phdr">
+      <span id="ptitle">SETUP</span>
+      <button id="pclose" onclick="togglePanel()">✕</button>
+    </div>
+    <div id="pbody"></div>
+  </div>
+
+  <div id="rh"></div>
+
+  <div id="editor">
+    <div id="etabs"></div>
+    <div id="econtent"></div>
+  </div>
+</div>
+
+<div id="sb">
+  <span id="sb-l">⬛ MC Addon Builder</span>
+  <span id="sb-r"></span>
+</div>
+
+<script>
+/* ────────── HELPERS ────────── */
+const $ = s => document.querySelector(s);
+const h = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const j = v => JSON.stringify(v, null, 2);
+const uid = () => crypto.randomUUID();
+const isMob = () => window.innerWidth <= 768;
+
+/* ────────── STATE ────────── */
+let S = makeState();
+function makeState() {
+  return {
+    proj: { bpName:'MyAddon BP', rpName:'MyAddon RP', ns:'myaddon', desc:'Custom Addon',
+            uuids:{bpH:'',bpD:'',bpS:'',rpH:'',rpM:''} },
+    items: [], tex: {},
+    opts: { autoGive:true, playerFilter:'' },
+    scriptCustom: null,
+    act: 'setup', panelOpen: true,
+    selItem: null, selTexItem: null, pvFile: null,
+  };
+}
+
+/* ────────── ACTIVITIES ────────── */
+const ACTS = [
+  {id:'setup',    em:'⚙️', tip:'ตั้งค่าโปรเจกต์'},
+  {id:'items',    em:'📦', tip:'จัดการไอเทม'},
+  {id:'textures', em:'🎨', tip:'อัปโหลดเทกเจอร์'},
+  {id:'script',   em:'⚡', tip:'แก้ไข Script'},
+  {id:'preview',  em:'📁', tip:'ดูไฟล์ทั้งหมด'},
+  {id:'export',   em:'📥', tip:'Download .mcaddon'},
+];
+const PANEL_TITLES = {
+  setup:'SETUP', items:'ITEMS', textures:'TEXTURES',
+  script:'SCRIPT', preview:'EXPLORER', export:'EXPORT'
+};
+
+/* ────────── NAVIGATION ────────── */
+function setAct(id) {
+  if (S.act === id) { togglePanel(); return; }
+  S.act = id;
+  S.panelOpen = true;
+  applyPanel();
+  renderAll();
+}
+
+function togglePanel() {
+  S.panelOpen = !S.panelOpen;
+  applyPanel();
+  renderActivityBar();
+}
+
+function applyPanel() {
+  const p = $('#panel'), ov = $('#ov');
+  if (isMob()) {
+    p.classList.toggle('mob-open', S.panelOpen);
+    ov.classList.toggle('show', S.panelOpen);
+  } else {
+    p.classList.toggle('closed', !S.panelOpen);
+    ov.classList.remove('show');
+  }
+}
+
+function closeMob() {
+  S.panelOpen = false;
+  $('#panel').classList.remove('mob-open');
+  $('#ov').classList.remove('show');
+}
+
+window.addEventListener('resize', () => {
+  if (!isMob()) {
+    $('#ov').classList.remove('show');
+    $('#panel').classList.remove('mob-open');
+    applyPanel();
+  }
+});
+
+/* ────────── RENDER ALL ────────── */
+function renderAll() {
+  renderActivityBar();
+  renderPanel();
+  renderTabs();
+  renderEditor();
+  renderStatus();
+}
+
+/* ────────── ACTIVITY BAR ────────── */
+function renderActivityBar() {
+  const u = S.proj.uuids;
+  const uOk = Object.values(u).every(v=>v);
+  const dots = {
+    setup:    uOk ? 'ok' : 'warn',
+    items:    S.items.length ? 'ok' : '',
+    textures: '',
+    script:   S.items.length ? 'ok' : '',
+    preview:  '',
+    export:   uOk && S.items.length ? 'ok' : 'warn',
+  };
+  $('#ab-icons').innerHTML = ACTS.map(a => {
+    const dot = dots[a.id];
+    return [
+      '<div class="ab-icon' + (S.act===a.id?' act':'') + '" onclick="setAct(\'' + a.id + '\')">',
+        a.em,
+        '<div class="ab-tip">' + a.tip + '</div>',
+        dot ? '<div class="ab-dot dot-' + dot + '"></div>' : '',
+      '</div>'
+    ].join('');
+  }).join('');
+}
+
+/* ────────── PANEL ────────── */
+function renderPanel() {
+  $('#ptitle').textContent = PANEL_TITLES[S.act] || S.act.toUpperCase();
+  const b = $('#pbody');
+
+  if (S.act === 'setup') {
+    const u = S.proj.uuids;
+    const uOk = Object.values(u).every(v=>v);
+    const uKeys = {bpH:'BP Header',bpD:'BP Data',bpS:'BP Script',rpH:'RP Header',rpM:'RP Module'};
+    let html = '<div class="ps">';
+    html += '<div class="ps-title">PROJECT</div>';
+    html += '<div class="pi"><span class="pi-ico">📋</span><span class="pi-lbl">' + h(S.proj.bpName) + '</span></div>';
+    html += '<div class="pi"><span class="pi-ico">🔤</span><span class="pi-lbl">' + h(S.proj.ns) + '</span>';
+    html += '<span class="pi-tag ' + (uOk?'ok':'warn') + '">' + (uOk?'UUID ✓':'UUID !') + '</span></div>';
+    html += '</div><div class="pdiv"></div><div class="ps">';
+    html += '<div class="ps-title">UUID STATUS</div>';
+    Object.keys(uKeys).forEach(k => {
+      html += '<div class="pi"><span class="pi-ico">' + (u[k]?'🟢':'🔴') + '</span>';
+      html += '<span class="pi-lbl" style="font-family:\'Courier New\',monospace;font-size:10px">' + uKeys[k] + '</span></div>';
+    });
+    html += '</div><div class="pdiv"></div>';
+    html += '<div style="padding:8px 12px"><button class="btn btn-g" style="width:100%;font-size:11px" onclick="genAllUUIDs()">✨ Generate All UUIDs</button></div>';
+    b.innerHTML = html;
+    return;
+  }
+
+  if (S.act === 'items') {
+    let html = '<div class="ps"><div class="ps-title">ITEMS (' + S.items.length + ')</div>';
+    if (S.items.length === 0) {
+      html += '<div class="pi" style="cursor:default;color:var(--text3)">ยังไม่มีไอเทม</div>';
+    }
+    S.items.forEach(it => {
+      html += '<div class="pi' + (it.id===S.selItem?' sel':'') + '" onclick="pickItem(\'' + it.id + '\')">';
+      html += '<span class="pi-ico">📦</span>';
+      html += '<span class="pi-lbl">' + h(it.displayName) + '</span>';
+      html += '<button class="pi-del" onclick="delItem(\'' + it.id + '\',event)" title="ลบ">✕</button>';
+      html += '</div>';
+    });
+    html += '</div><div class="pdiv"></div>';
+    html += '<button class="p-add" onclick="addItem()">＋ เพิ่มไอเทมใหม่</button>';
+    b.innerHTML = html;
+    return;
+  }
+
+  if (S.act === 'textures') {
+    let html = '<div class="ps"><div class="ps-title">ITEMS</div>';
+    if (S.items.length === 0) {
+      html += '<div class="pi" style="cursor:default;color:var(--text3);font-size:12px;padding:12px">เพิ่มไอเทมก่อน</div>';
+    }
+    S.items.forEach(it => {
+      const hasI = !!S.tex['icon_'+it.id];
+      const hasM = !!S.tex['model_'+it.id];
+      let tagCls='', tagTxt='0/2';
+      if (hasI && hasM) { tagCls='ok'; tagTxt='2/2'; }
+      else if (hasI || hasM) { tagCls='warn'; tagTxt='1/2'; }
+      html += '<div class="pi' + (it.id===S.selTexItem?' sel':'') + '" onclick="pickTexItem(\'' + it.id + '\')">';
+      html += '<span class="pi-ico">📦</span>';
+      html += '<span class="pi-lbl">' + h(it.displayName) + '</span>';
+      html += '<span class="pi-tag ' + tagCls + '">' + tagTxt + '</span></div>';
+    });
+    html += '</div>';
+    b.innerHTML = html;
+    return;
+  }
+
+  if (S.act === 'script') {
+    b.innerHTML = [
+      '<div class="ps"><div class="ps-title">OPTIONS</div>',
+      '<div style="padding:8px 12px;display:flex;flex-direction:column;gap:10px">',
+      '<div class="fld"><label>Auto-give on Spawn</label>',
+      '<select id="sc-ag" onchange="S.opts.autoGive=this.value===\'1\';refreshScript()">',
+      '<option value="1"' + (S.opts.autoGive?' selected':'') + '>✅ เปิด</option>',
+      '<option value="0"' + (!S.opts.autoGive?' selected':'') + '>❌ ปิด</option>',
+      '</select></div>',
+      '<div class="fld"><label>กรองชื่อผู้เล่น</label>',
+      '<input id="sc-pl" value="' + h(S.opts.playerFilter) + '" placeholder="Steve, Alex ..." oninput="S.opts.playerFilter=this.value;refreshScript()">',
+      '<div class="hint">เว้นว่าง = ทุกคน</div></div>',
+      '<button class="btn btn-s" style="font-size:11px" onclick="resetScript()">↩ Reset Script</button>',
+      '</div></div>'
+    ].join('');
+    return;
+  }
+
+  if (S.act === 'preview') {
+    renderTreePanel(b);
+    return;
+  }
+
+  if (S.act === 'export') {
+    const u = S.proj.uuids;
+    const uOk = Object.values(u).every(v=>v);
+    const canDl = uOk && S.items.length > 0;
+    const checks = [
+      {ok:uOk,    lbl:'UUID ครบ 5 ตัว'},
+      {ok:S.items.length>0, lbl:'มีไอเทม '+S.items.length+' ตัว'},
+      {ok:Object.keys(S.tex).length>0, lbl:'มีเทกเจอร์ '+Object.keys(S.tex).length+' ไฟล์'},
+    ];
+    let html = '<div class="ps"><div class="ps-title">CHECKLIST</div>';
+    checks.forEach(c => {
+      html += '<div class="pi" style="cursor:default"><span class="pi-ico">' + (c.ok?'✅':'⚠️') + '</span>';
+      html += '<span class="pi-lbl">' + c.lbl + '</span></div>';
+    });
+    html += '</div><div class="pdiv"></div><div style="padding:8px 12px">';
+    html += '<button class="dl-btn" onclick="downloadAddon()"' + (canDl?'':' disabled') + '>📥 Download</button></div>';
+    b.innerHTML = html;
+    return;
+  }
+}
+
+/* ────────── TABS ────────── */
+const TAB_INFO = {
+  setup:    {ico:'⚙️', lbl:'manifest.json'},
+  items:    {ico:'📦', lbl:'items/'},
+  textures: {ico:'🎨', lbl:'textures/'},
+  script:   {ico:'⚡', lbl:'scripts/main.js'},
+  preview:  {ico:'📁', lbl:'explorer'},
+  export:   {ico:'📥', lbl:'export'},
+};
+function renderTabs() {
+  const t = TAB_INFO[S.act];
+  if (!t) { $('#etabs').innerHTML=''; return; }
+  const lbl = S.act==='preview' && S.pvFile ? S.pvFile.split('/').pop() : t.lbl;
+  $('#etabs').innerHTML = '<div class="etab sel">' + t.ico + ' ' + h(lbl) + '</div>';
+}
+
+/* ────────── STATUS BAR ────────── */
+function renderStatus() {
+  const lbls = {setup:'⚙️ ตั้งค่า',items:'📦 ไอเทม',textures:'🎨 เทกเจอร์',
+    script:'⚡ Script',preview:'📁 Explorer',export:'📥 Export'};
+  $('#sb-l').textContent = (lbls[S.act]||S.act) + ' — ' + (S.proj.ns||'myaddon');
+  const uOk = Object.values(S.proj.uuids).every(v=>v);
+  $('#sb-r').textContent = S.items.length + ' items  ' + (uOk?'UUID ✓':'UUID ⚠');
+}
+
+/* ────────── EDITOR ────────── */
+function renderEditor() {
+  const el = $('#econtent');
+  if (S.act === 'setup')    renderSetupEd(el);
+  else if (S.act === 'items')    renderItemsEd(el);
+  else if (S.act === 'textures') renderTexEd(el);
+  else if (S.act === 'script')   renderScriptEd(el);
+  else if (S.act === 'preview')  renderPreviewEd(el);
+  else if (S.act === 'export')   renderExportEd(el);
+}
+
+function renderSetupEd(el) {
+  const p = S.proj;
+  el.innerHTML = [
+    '<div class="sec-h">⚙️ ตั้งค่าโปรเจกต์</div>',
+    '<div class="sec-s">กำหนดชื่อ, namespace และ UUID ก่อนสร้างไอเทม</div>',
+    '<div class="card">',
+    '<div class="card-h">📋 ข้อมูลพื้นฐาน</div>',
+    '<div class="fg fg2">',
+    '<div class="fld"><label>Behavior Pack Name</label><input id="in-bp" value="' + h(p.bpName) + '" oninput="onSetupChange()"></div>',
+    '<div class="fld"><label>Resource Pack Name</label><input id="in-rp" value="' + h(p.rpName) + '" oninput="onSetupChange()"></div>',
+    '</div>',
+    '<div class="fg fg2">',
+    '<div class="fld"><label>Namespace ★</label><input id="in-ns" value="' + h(p.ns) + '" oninput="onSetupChange()"><div class="hint">ตัวพิมพ์เล็ก ไม่มีช่องว่าง เช่น myaddon</div></div>',
+    '<div class="fld"><label>คำอธิบาย</label><input id="in-desc" value="' + h(p.desc) + '" oninput="onSetupChange()"></div>',
+    '</div></div>',
+    '<div class="card">',
+    '<div class="card-h" style="justify-content:space-between">',
+    '<span>🔑 UUID</span>',
+    '<button class="btn btn-g" style="font-size:11px;padding:4px 11px" onclick="genAllUUIDs()">✨ Generate ทั้งหมด</button>',
+    '</div>',
+    '<div class="uuid-list" id="uuid-list"></div>',
+    '</div>'
+  ].join('');
+  renderUUIDs();
+}
+
+function renderItemsEd(el) {
+  const item = S.items.find(i => i.id === S.selItem);
+  if (!item) {
+    el.innerHTML = [
+      '<div class="sec-h">📦 ไอเทม</div>',
+      '<div class="sec-s">เลือกไอเทมจากแถบซ้าย หรือเพิ่มใหม่</div>',
+      '<div class="empty"><div class="empty-ico">📦</div>',
+      '<div>เลือกไอเทมทางซ้าย</div>',
+      '<button class="btn btn-g" onclick="addItem()">➕ เพิ่มไอเทมใหม่</button></div>'
+    ].join('');
+    return;
+  }
+  const ns = S.proj.ns || 'myaddon';
+  const slots = ['slot.armor.head','slot.armor.chest','slot.armor.legs','slot.armor.feet'];
+  const slotOpts = slots.map(s => '<option' + (item.slot===s?' selected':'') + '>' + s + '</option>').join('');
+  el.innerHTML = [
+    '<div class="sec-h">📦 ' + h(item.displayName) + '</div>',
+    '<div class="sec-s" style="font-family:\'Courier New\',monospace;font-size:11px;color:var(--acc2)">' + ns + ':' + item.id + '</div>',
+    '<div class="card"><div class="card-h">✏️ แก้ไขไอเทม</div>',
+    '<div class="fg fg2">',
+    '<div class="fld"><label>Item ID (ไม่สามารถแก้ไข)</label><input value="' + h(item.id) + '" readonly style="color:var(--text3)"></div>',
+    '<div class="fld"><label>Display Name</label><input id="it-name" value="' + h(item.displayName) + '" oninput="updItem(\'' + item.id + '\',\'displayName\',this.value)"></div>',
+    '</div>',
+    '<div class="fg fg2">',
+    '<div class="fld"><label>Armor Slot</label><select onchange="updItem(\'' + item.id + '\',\'slot\',this.value)">' + slotOpts + '</select></div>',
+    '<div class="fld"><label>Icon Name</label><input id="it-icon" value="' + h(item.iconName) + '" oninput="updItem(\'' + item.id + '\',\'iconName\',this.value)"></div>',
+    '</div></div>',
+    '<div class="card" style="padding:0;overflow:hidden">',
+    '<div class="mt" style="padding:0 12px;background:#2a2a2a">',
+    '<div class="mt-t sel" onclick="switchItab(this,\'ia-0\')">Armor JSON</div>',
+    '<div class="mt-t" onclick="switchItab(this,\'ia-1\')">Trigger JSON</div>',
+    '<div class="mt-t" onclick="switchItab(this,\'ia-2\')">Attachable</div>',
+    '</div>',
+    '<div id="ia-0"><div class="cx-body" style="padding:11px;max-height:260px;overflow:auto"><pre>' + h(genArmorJSON(item)) + '</pre></div></div>',
+    '<div id="ia-1" style="display:none"><div class="cx-body" style="padding:11px;max-height:260px;overflow:auto"><pre>' + h(genTriggerJSON(item)) + '</pre></div></div>',
+    '<div id="ia-2" style="display:none"><div class="cx-body" style="padding:11px;max-height:260px;overflow:auto"><pre>' + h(genAttachableJSON(item)) + '</pre></div></div>',
+    '</div>'
+  ].join('');
+}
+
+function switchItab(btn, id) {
+  const card = btn.closest('.card');
+  card.querySelectorAll('.mt-t').forEach(t => t.classList.remove('sel'));
+  card.querySelectorAll('[id^="ia-"]').forEach(t => t.style.display='none');
+  btn.classList.add('sel');
+  document.getElementById(id).style.display = 'block';
+}
+
+function renderTexEd(el) {
+  const id = S.selTexItem || (S.items[0] && S.items[0].id);
+  const item = S.items.find(i => i.id === id);
+  if (!item) {
+    el.innerHTML = '<div class="sec-h">🎨 เทกเจอร์</div><div class="sec-s">เพิ่มไอเทมก่อน</div><div class="empty"><div class="empty-ico">🎨</div><div>ยังไม่มีไอเทม</div></div>';
+    return;
+  }
+  const ns = S.proj.ns || 'myaddon';
+  const icoKey = 'icon_'+item.id, modKey = 'model_'+item.id;
+  const icoSrc = S.tex[icoKey], modSrc = S.tex[modKey];
+  el.innerHTML = [
+    '<div class="sec-h">🎨 ' + h(item.displayName) + '</div>',
+    '<div class="sec-s"><code style="color:var(--acc2)">' + ns + ':' + item.id + '</code></div>',
+    '<div class="al al-i">💡 ไอคอน inventory: <b>PNG 32×32</b> — เทกเจอร์โมเดล: <b>PNG 64×32</b> หรือ <b>128×64</b></div>',
+    '<div class="tex2">',
+    '<div class="card">',
+    '<div class="card-h">📦 ไอคอน Inventory</div>',
+    '<div class="hint" style="margin-bottom:8px">textures/seaitem/' + item.id + '.png</div>',
+    '<div class="uz' + (icoSrc?' filled':'') + '">',
+    '<input type="file" accept="image/png,image/gif" onchange="handleTex(event,\'' + icoKey + '\')">',
+    icoSrc ? '<img src="' + icoSrc + '" alt="icon">' : '<div style="font-size:32px;margin-bottom:6px">🖼️</div>',
+    '<div class="uz-l">' + (icoSrc?'✅ อัปโหลดแล้ว':'คลิกเพื่ออัปโหลด') + '</div>',
+    '<div class="uz-h">PNG 32×32</div></div>',
+    icoSrc ? '<button class="btn btn-r mt8" style="width:100%;font-size:11px" onclick="remTex(\'' + icoKey + '\')">✕ ลบ</button>' : '',
+    '</div>',
+    '<div class="card">',
+    '<div class="card-h">🧊 เทกเจอร์โมเดล</div>',
+    '<div class="hint" style="margin-bottom:8px">textures/seana/' + item.id + '.png</div>',
+    '<div class="uz' + (modSrc?' filled':'') + '">',
+    '<input type="file" accept="image/png" onchange="handleTex(event,\'' + modKey + '\')">',
+    modSrc ? '<img src="' + modSrc + '" alt="model">' : '<div style="font-size:32px;margin-bottom:6px">🎨</div>',
+    '<div class="uz-l">' + (modSrc?'✅ อัปโหลดแล้ว':'คลิกเพื่ออัปโหลด') + '</div>',
+    '<div class="uz-h">PNG 64×32</div></div>',
+    modSrc ? '<button class="btn btn-r mt8" style="width:100%;font-size:11px" onclick="remTex(\'' + modKey + '\')">✕ ลบ</button>' : '',
+    '</div></div>'
+  ].join('');
+}
+
+function renderScriptEd(el) {
+  const js = S.scriptCustom !== null ? S.scriptCustom : genScriptJS();
+  el.innerHTML = [
+    '<div class="sec-h">⚡ Script</div>',
+    '<div class="sec-s">Generate จากไอเทม แก้ไขได้ตรงนี้</div>',
+    '<div class="cbox">',
+    '<div class="cx-h">',
+    '<span class="cx-lang">JAVASCRIPT — BehaviorPack/scripts/main.js</span>',
+    '<div class="row gap6">',
+    '<button class="bxs" id="sc-copy-btn" onclick="copyScript()">📋 Copy</button>',
+    '</div></div>',
+    '<div class="cx-body">',
+    '<textarea id="sc-ed" spellcheck="false" oninput="S.scriptCustom=this.value">' + h(js) + '</textarea>',
+    '</div></div>'
+  ].join('');
+}
+
+function renderPreviewEd(el) {
+  if (!S.pvFile) {
+    el.innerHTML = '<div class="sec-h">📁 Explorer</div><div class="sec-s">คลิกไฟล์จากแถบซ้ายเพื่อดูเนื้อหา</div><div class="empty"><div class="empty-ico">📄</div><div>เลือกไฟล์ทางซ้าย</div></div>';
+    return;
+  }
+  const files = getFiles();
+  const content = files[S.pvFile];
+  const fname = S.pvFile.split('/').pop();
+  const isPng = fname.endsWith('.png');
+  const lang = fname.endsWith('.js')?'JAVASCRIPT':fname.endsWith('.json')?'JSON':isPng?'IMAGE':'TEXT';
+  const body = !content
+    ? '<div style="color:var(--text3);font-size:11px">ไฟล์นี้ว่าง — จะสร้างเมื่อ download</div>'
+    : (isPng || content.startsWith('data:image'))
+      ? '<div style="text-align:center;padding:12px"><img src="' + content + '" style="max-width:180px;max-height:150px;image-rendering:pixelated;border:1px solid var(--border);border-radius:4px"></div>'
+      : '<pre>' + h(content) + '</pre>';
+  el.innerHTML = [
+    '<div class="sec-h">📄 ' + h(fname) + '</div>',
+    '<div class="sec-s" style="font-family:\'Courier New\',monospace;font-size:11px;color:var(--acc2)">' + h(S.pvFile) + '</div>',
+    '<div class="cbox">',
+    '<div class="cx-h">',
+    '<span class="cx-lang">' + lang + '</span>',
+    content && !isPng && !content.startsWith('data:image') ? '<button class="bxs" onclick="copyPreviewContent()">📋 Copy</button>' : '',
+    '</div><div class="cx-body">' + body + '</div></div>'
+  ].join('');
+}
+
+function copyPreviewContent() {
+  const pre = $('#econtent pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    const btns = $$('#econtent .bxs');
+    btns.forEach(b => { if (b.textContent.includes('Copy')) { b.textContent='✅'; setTimeout(()=>b.textContent='📋 Copy',1500); }});
+  });
+}
+
+function renderExportEd(el) {
+  const u = S.proj.uuids;
+  const uOk = Object.values(u).every(v=>v);
+  const texN = Object.keys(S.tex).length;
+  const fileN = Object.keys(getFiles()).length + texN;
+  const canDl = uOk && S.items.length > 0;
+  el.innerHTML = [
+    '<div class="sec-h">📥 Export .mcaddon</div>',
+    '<div class="sec-s">ตรวจสอบแล้วกด Download</div>',
+    '<div class="stats">',
+    '<div class="stat"><div class="stat-n">' + S.items.length + '</div><div class="stat-l">ไอเทม</div></div>',
+    '<div class="stat"><div class="stat-n">' + texN + '</div><div class="stat-l">เทกเจอร์</div></div>',
+    '<div class="stat"><div class="stat-n">' + fileN + '</div><div class="stat-l">ไฟล์รวม</div></div>',
+    '<div class="stat"><div class="stat-n" style="color:' + (uOk?'var(--acc)':'#f87171') + '">' + (uOk?'✅':'❌') + '</div><div class="stat-l">UUID</div></div>',
+    '</div>',
+    canDl ? '<div class="okbox"><h4>✅ พร้อม Export</h4><ul><li>UUID ครบ 5 ตัว</li><li>มีไอเทม ' + S.items.length + ' ตัว</li>' + (texN?'<li>มีเทกเจอร์ '+texN+' ไฟล์</li>':'') + '</ul></div>' : '',
+    !uOk ? '<div class="ebox">⚠️ Generate UUID ก่อน — ไปที่ ⚙️ ตั้งค่า</div>' : '',
+    !S.items.length ? '<div class="ebox">⚠️ ยังไม่มีไอเทม — ไปที่ 📦 ไอเทม</div>' : '',
+    '<div class="wbox"><h4>⚠️ สิ่งที่ต้องทำหลัง Download</h4><ul>',
+    '<li>Blockbench → Export Geometry → วางใน <code>models/entity/</code></li>',
+    '<li>Blockbench → Export Animation → วางใน <code>animations/</code></li>',
+    '<li>แก้ <code>attachables/</code> ให้ชี้ geometry + animation</li>',
+    '</ul></div>',
+    '<button class="dl-btn" onclick="downloadAddon()"' + (canDl?'':' disabled') + '>📥 Download .mcaddon</button>',
+    '<div class="hint mt8" style="text-align:center">ดับเบิ้ลคลิก .mcaddon ในเกมเพื่อติดตั้ง</div>'
+  ].join('');
+}
+
+/* ────────── SETUP HANDLERS ────────── */
+function onSetupChange() {
+  S.proj.bpName  = $('#in-bp')?.value  || S.proj.bpName;
+  S.proj.rpName  = $('#in-rp')?.value  || S.proj.rpName;
+  S.proj.ns      = (($('#in-ns')?.value)||S.proj.ns).toLowerCase().replace(/[^a-z0-9_]/g,'');
+  S.proj.desc    = $('#in-desc')?.value || S.proj.desc;
+  if ($('#in-ns')) $('#in-ns').value = S.proj.ns;
+  $('#hdr-ns').textContent = S.proj.ns || 'myaddon';
+  S.scriptCustom = null;
+  renderActivityBar(); renderPanel(); renderStatus();
+}
+
+const UUID_LBLS = {bpH:'BP Header',bpD:'BP Data',bpS:'BP Script',rpH:'RP Header',rpM:'RP Module'};
+function genAllUUIDs() {
+  S.proj.uuids = {bpH:uid(),bpD:uid(),bpS:uid(),rpH:uid(),rpM:uid()};
+  S.scriptCustom = null;
+  renderUUIDs(); renderActivityBar(); renderPanel(); renderStatus();
+}
+function renderUUIDs() {
+  const el = $('#uuid-list'); if (!el) return;
+  let html = '';
+  Object.entries(UUID_LBLS).forEach(([k,lbl]) => {
+    const v = S.proj.uuids[k];
+    html += '<div class="ur">';
+    html += '<div class="ul">' + lbl + '</div>';
+    html += '<div class="uv">' + (v ? '<span>' + h(v) + '</span>' : '<span class="ue">ยังไม่ generate</span>') + '</div>';
+    html += '<button class="bxs" id="cb-' + k + '" onclick="copyUUID(\'' + k + '\')">' + (v?'📋':'-') + '</button>';
+    html += '<button class="bxs" onclick="regenUUID(\'' + k + '\')">🔄</button>';
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+function copyUUID(k) {
+  const v = S.proj.uuids[k]; if (!v) return;
+  navigator.clipboard.writeText(v).then(() => {
+    const btn = $('#cb-'+k); if (!btn) return;
+    btn.textContent='✅'; btn.classList.add('ok');
+    setTimeout(()=>{ btn.textContent='📋'; btn.classList.remove('ok'); }, 1500);
+  });
+}
+function regenUUID(k) {
+  S.proj.uuids[k] = uid(); S.scriptCustom = null;
+  renderUUIDs(); renderActivityBar(); renderPanel(); renderStatus();
+}
+
+/* ────────── ITEMS HANDLERS ────────── */
+let iCtr = 0;
+function addItem() {
+  iCtr++;
+  const id = 'item' + iCtr;
+  S.items.push({id, displayName:'MyItem '+iCtr, slot:'slot.armor.legs', iconName:id+'_icon'});
+  S.scriptCustom = null;
+  S.selItem = id;
+  S.act = 'items';
+  S.panelOpen = true;
+  applyPanel();
+  renderAll();
+}
+function pickItem(id) {
+  S.selItem = id;
+  if (S.act !== 'items') { S.act='items'; S.panelOpen=true; applyPanel(); }
+  renderAll();
+}
+function delItem(id, e) {
+  if (e) e.stopPropagation();
+  if (!confirm('ลบไอเทม "' + id + '"?')) return;
+  S.items = S.items.filter(i => i.id !== id);
+  delete S.tex['icon_'+id]; delete S.tex['model_'+id];
+  if (S.selItem === id) S.selItem = S.items.length ? S.items[0].id : null;
+  S.scriptCustom = null;
+  renderAll();
+}
+function updItem(id, key, val) {
+  const it = S.items.find(i => i.id === id); if (!it) return;
+  it[key] = val; S.scriptCustom = null;
+  renderPanel(); renderStatus();
+}
+
+/* ────────── TEXTURE HANDLERS ────────── */
+function pickTexItem(id) {
+  S.selTexItem = id;
+  if (S.act !== 'textures') { S.act='textures'; S.panelOpen=true; applyPanel(); }
+  renderAll();
+}
+function handleTex(e, key) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => { S.tex[key] = ev.target.result; renderAll(); };
+  r.readAsDataURL(f);
+}
+function remTex(key) { delete S.tex[key]; renderAll(); }
+
+/* ────────── SCRIPT HANDLERS ────────── */
+function refreshScript() {
+  S.scriptCustom = null;
+  if (S.act === 'script') renderEditor();
+}
+function resetScript() {
+  S.scriptCustom = null;
+  if (S.act === 'script') renderEditor();
+}
+function copyScript() {
+  const el = $('#sc-ed'); if (!el) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = $('#sc-copy-btn'); if (!btn) return;
+    btn.textContent='✅ Copied!';
+    setTimeout(()=>btn.textContent='📋 Copy', 1500);
+  });
+}
+
+/* ────────── PREVIEW / TREE ────────── */
+function renderTreePanel(b) {
+  const files = getFiles();
+  Object.keys(S.tex).forEach(k => {
+    const isI = k.startsWith('icon_');
+    const id  = k.replace(/^(icon|model)_/,'');
+    const ns  = S.proj.ns||'myaddon', rp='ResourcePack_'+ns;
+    files[isI ? rp+'/textures/seaitem/'+id+'.png' : rp+'/textures/seana/'+id+'.png'] = S.tex[k];
+  });
+  b._files = files;
+  b.innerHTML = buildTreeHTML(files, '');
+}
+function buildTreeHTML(files, q) {
+  const sorted = Object.keys(files).sort();
+  const shown  = q ? sorted.filter(f => f.toLowerCase().includes(q.toLowerCase())) : sorted;
+  const done   = new Set();
+  let html     = '<div style="padding:6px 10px 3px"><input placeholder="🔍 ค้นหา..." style="width:100%;background:#333;border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:11px;font-family:inherit" oninput="filterTree(this.value)" value="' + h(q) + '"></div>';
+  shown.forEach(path => {
+    const parts = path.split('/');
+    for (let i=1; i<parts.length; i++) {
+      const dir = parts.slice(0,i).join('/');
+      if (!done.has(dir)) {
+        html += '<div class="ti dir d' + Math.min(i-1,2) + '">📁 ' + h(parts[i-1]) + '/</div>';
+        done.add(dir);
+      }
+    }
+    const depth = Math.min(parts.length-1, 2);
+    const fname = parts[parts.length-1];
+    const ico = fname.endsWith('.png')?'🖼️':fname.endsWith('.json')?'📋':fname.endsWith('.js')?'⚡':'📄';
+    const sel = path===S.pvFile ? ' sel' : '';
+    html += '<div class="ti d' + depth + sel + '" onclick="showPvFile(\'' + path.replace(/'/g,"\\'") + '\')">' + ico + ' ' + h(fname) + '</div>';
+  });
+  return html;
+}
+function filterTree(q) {
+  const b = $('#pbody'); if (!b || !b._files) return;
+  b.innerHTML = buildTreeHTML(b._files, q);
+  b._files = b._files; // keep reference
+}
+function showPvFile(path) {
+  S.pvFile = path;
+  renderTabs(); renderEditor();
+  renderTreePanel($('#pbody'));
+}
+
+/* ────────── FILE GENERATORS ────────── */
+function genBPManifest() {
+  const {bpName,desc,uuids} = S.proj;
+  return j({format_version:2,
+    header:{name:bpName,description:desc,uuid:uuids.bpH||'GENERATE-UUID',
+      version:[1,0,0],min_engine_version:[1,20,0]},
+    modules:[
+      {type:'data',uuid:uuids.bpD||'GENERATE-UUID',version:[1,0,0]},
+      {type:'script',uuid:uuids.bpS||'GENERATE-UUID',version:[0,0,1],
+        entry:'scripts/main.js',language:'javascript'}],
+    dependencies:[
+      {uuid:uuids.rpH||'GENERATE-UUID',version:[1,0,0]},
+      {module_name:'@minecraft/server',version:'1.14.0'}]});
+}
+function genRPManifest() {
+  const {rpName,desc,uuids} = S.proj;
+  return j({format_version:2,
+    header:{name:rpName,description:desc,uuid:uuids.rpH||'GENERATE-UUID',
+      version:[1,0,0],min_engine_version:[1,20,0]},
+    modules:[{type:'resources',uuid:uuids.rpM||'GENERATE-UUID',version:[1,0,0]}]});
+}
+function genArmorJSON(item) {
+  const ns = S.proj.ns||'myaddon';
+  return j({format_version:'1.21.10','minecraft:item':{
+    description:{identifier:ns+':'+item.id,menu_category:{category:'none'}},
+    components:{'minecraft:icon':item.iconName,'minecraft:max_stack_size':1,
+      'minecraft:display_name':{value:item.displayName},
+      'minecraft:wearable':{slot:item.slot}}}});
+}
+function genTriggerJSON(item) {
+  const ns = S.proj.ns||'myaddon';
+  return j({format_version:'1.21.10','minecraft:item':{
+    description:{identifier:ns+':'+item.id+'_trigger',menu_category:{category:'equipment'}},
+    components:{'minecraft:max_stack_size':1,'minecraft:icon':item.iconName,
+      'minecraft:display_name':{value:item.displayName+'\n§7(คลิ้กขวา)'}}}});
+}
+function genAttachableJSON(item) {
+  const ns = S.proj.ns||'myaddon';
+  const geo = 'geometry.'+ns+'_'+item.id;
+  const anim = 'animation.'+ns+'_'+item.id;
+  return j({format_version:'1.10.0','minecraft:attachable':{description:{
+    identifier:ns+':'+item.id,
+    item:{[ns+':'+item.id]:"query.owner_identifier == 'minecraft:player'"},
+    materials:{default:'entity_emissive_alpha'},
+    textures:{default:'textures/seana/'+item.id},
+    geometry:{default:geo},
+    scripts:{initialize:['variable.init=0;'],
+      pre_animation:['variable.head_y=-query.target_y_rotation/6;'],
+      animate:['main']},
+    animations:{main:anim},
+    render_controllers:['controller.render.item_default']}}}); 
+}
+function genItemTextureJSON() {
+  const d = {};
+  S.items.forEach(it => { d[it.iconName] = {textures:['textures/seaitem/'+it.id]}; });
+  return j({resource_pack_name:'vanilla',texture_name:'atlas.items',texture_data:d});
+}
+function genScriptJS() {
+  const ns = S.proj.ns||'myaddon';
+  const ag = S.opts.autoGive;
+  const pl = S.opts.playerFilter.trim();
+  const players = pl ? pl.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  if (!S.items.length) return 'import { world, system } from "@minecraft/server";\n// เพิ่มไอเทมก่อน';
+  const L = ['import { world, system } from "@minecraft/server";',''];
+  S.items.forEach(it => {
+    const T = it.id.toUpperCase();
+    L.push('const TRIGGER_'+T+' = "'+ns+':'+it.id+'_trigger";');
+    L.push('const ARMOR_'+T+'   = "'+ns+':'+it.id+'";');
+    L.push('const SLOT_'+T+'    = "'+it.slot+'";');
+  });
+  L.push('');
+  if (ag) {
+    L.push('// ─── Auto-give เมื่อ spawn ───');
+    L.push('world.afterEvents.playerSpawn.subscribe(async (ev) => {');
+    L.push('  if (!ev.initialSpawn) return;');
+    if (players.length) L.push('  if (!['+players.map(p=>'"'+p+'"').join(',')+'].includes(ev.player.name)) return;');
+    L.push('  system.runTimeout(async () => {');
+    L.push('    const p = ev.player;');
+    S.items.forEach(it => {
+      const T = it.id.toUpperCase();
+      L.push('    try {');
+      L.push('      const r = await p.runCommandAsync(`execute unless entity @s[hasitem={item=${TRIGGER_'+T+'}}] run give @s ${TRIGGER_'+T+'} 1`);');
+      L.push('      if (r.successCount > 0) p.sendMessage("§aได้รับ §l'+it.displayName+'§r§a!");');
+      L.push('    } catch {}');
+    });
+    L.push('  }, 20);','});','');
+  }
+  L.push('// ─── Toggle ใส่/ถอด ───');
+  L.push('world.beforeEvents.itemUse.subscribe((ev) => {');
+  L.push('  const { itemStack: item, source: p } = ev;');
+  L.push('  if (!p?.isValid() || !item) return;','');
+  S.items.forEach(it => {
+    const T = it.id.toUpperCase();
+    L.push('  if (item.typeId === TRIGGER_'+T+') {');
+    L.push('    ev.cancel = true;');
+    L.push('    system.run(async () => {');
+    L.push('      try {');
+    L.push('        const w = await p.runCommandAsync(`execute if entity @s[hasitem={item=${ARMOR_'+T+'},location=${SLOT_'+T+'}}] run clear @s ${ARMOR_'+T+'}`);');
+    L.push('        if (w.successCount > 0) return;');
+    L.push('        await p.runCommandAsync(`clear @s ${ARMOR_'+T+'}`);');
+    L.push('        await p.runCommandAsync(`replaceitem entity @s ${SLOT_'+T+'} 0 ${ARMOR_'+T+'}`);');
+    L.push('      } catch(e) { p.sendMessage("§cError: " + e.message); }');
+    L.push('    });','    return;','  }','');
+  });
+  L.push('});');
+  return L.join('\n');
+}
+function getFiles() {
+  const ns = S.proj.ns||'myaddon';
+  const bp = 'BehaviorPack_'+ns, rp = 'ResourcePack_'+ns;
+  const f = {};
+  f[bp+'/manifest.json'] = genBPManifest();
+  f[bp+'/scripts/main.js'] = S.scriptCustom !== null ? S.scriptCustom : genScriptJS();
+  S.items.forEach(it => {
+    f[bp+'/items/'+it.id+'.json'] = genArmorJSON(it);
+    f[bp+'/items/'+it.id+'_trigger.json'] = genTriggerJSON(it);
+  });
+  f[rp+'/manifest.json'] = genRPManifest();
+  if (S.items.length) {
+    f[rp+'/textures/item_texture.json'] = genItemTextureJSON();
+    S.items.forEach(it => {
+      f[rp+'/attachables/'+it.id+'.json'] = genAttachableJSON(it);
+      if (!S.tex['icon_'+it.id])  f[rp+'/textures/seaitem/'+it.id+'.png'] = null;
+      if (!S.tex['model_'+it.id]) f[rp+'/textures/seana/'+it.id+'.png'] = null;
+    });
+    f[rp+'/models/entity/.keep'] = '# วางไฟล์ geometry.json จาก Blockbench ที่นี่';
+    f[rp+'/animations/.keep'] = '# วางไฟล์ animation.json จาก Blockbench ที่นี่';
+  }
+  f['README.txt'] = 'MC ADDON — '+S.proj.bpName+'\nNamespace: '+ns+'\nItems: '+S.items.map(i=>ns+':'+i.id).join(', ')+'\n\nทำต่อ:\n1. Export Blockbench Geometry → '+rp+'/models/entity/\n2. Export Blockbench Animation → '+rp+'/animations/\n3. แก้ '+rp+'/attachables/ ให้ชี้ geometry+animation\n4. วาง PNG texture ใน textures/seaitem/ และ textures/seana/';
+  return f;
+}
+
+/* ────────── DOWNLOAD ────────── */
+async function downloadAddon() {
+  if (!Object.values(S.proj.uuids).every(v=>v)) {
+    alert('Generate UUID ก่อน!\nไปที่ ⚙️ ตั้งค่า → ✨ Generate ทั้งหมด'); return;
+  }
+  if (!S.items.length) { alert('เพิ่มไอเทมอย่างน้อย 1 ตัวก่อน'); return; }
+  if (typeof JSZip === 'undefined') { alert('JSZip ยังโหลดไม่เสร็จ ลองใหม่'); return; }
+  const btns = $$('.dl-btn, .tb-pri, #hdr-dl');
+  btns.forEach(b => { b.disabled=true; });
+  try {
+    const zip  = new JSZip();
+    const files = getFiles();
+    for (const [p,c] of Object.entries(files)) {
+      if (!c) continue;
+      c.startsWith('data:image') ? zip.file(p, c.split(',')[1], {base64:true}) : zip.file(p, c);
+    }
+    const ns = S.proj.ns||'myaddon', rp = 'ResourcePack_'+ns;
+    for (const [k,durl] of Object.entries(S.tex)) {
+      const isI = k.startsWith('icon_'), id = k.replace(/^(icon|model)_/,'');
+      zip.file(isI ? rp+'/textures/seaitem/'+id+'.png' : rp+'/textures/seana/'+id+'.png',
+        durl.split(',')[1], {base64:true});
+    }
+    const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = ns+'_addon.mcaddon';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(a.href);
+    btns.forEach(b => { b.disabled=false; });
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btns.forEach(b => { b.disabled=false; });
+  }
+}
+
+/* ────────── RESET ────────── */
+function resetAll() {
+  if (!confirm('รีเซ็ตโปรเจกต์ทั้งหมด?')) return;
+  S = makeState(); iCtr = 0;
+  genAllUUIDs();
+  renderAll();
+  applyPanel();
+}
+
+/* ────────── RESIZE HANDLE ────────── */
+let rz=false, rzX=0, rzW=240;
+$('#rh').addEventListener('mousedown', e => {
+  rz=true; rzX=e.clientX; rzW=parseInt($('#panel').style.width)||240;
+  $('#rh').classList.add('drag');
+  document.body.style.cursor='ew-resize'; e.preventDefault();
+});
+document.addEventListener('mousemove', e => {
+  if (!rz||isMob()) return;
+  const w = Math.min(Math.max(rzW+(e.clientX-rzX), 160), 520);
+  $('#panel').style.width = w+'px'; $('#panel').style.minWidth = w+'px';
+});
+document.addEventListener('mouseup', () => {
+  if (!rz) return; rz=false;
+  $('#rh').classList.remove('drag'); document.body.style.cursor='';
+});
+
+
+/* --- Added Features --- */
+function saveProject(){
+  localStorage.setItem('mc_addon_builder_project', JSON.stringify(S));
+}
+function loadProject(){
+  try{
+    const d = localStorage.getItem('mc_addon_builder_project');
+    if(d){
+      S = Object.assign(makeState(), JSON.parse(d));
+    }
+  }catch(e){}
+}
+setInterval(saveProject, 2000);
+
+function showNotification(msg){
+  alert(msg);
+}
+
+const _oldDownloadAddon = downloadAddon;
+downloadAddon = async function(){
+  const ov = document.getElementById('exportOverlay');
+  const bar = document.getElementById('exportBar');
+  const txt = document.getElementById('exportText');
+  ov.style.display='flex';
+  for(let i=0;i<=90;i+=10){
+    bar.style.width=i+'%';
+    txt.textContent='Exporting... '+i+'%';
+    await new Promise(r=>setTimeout(r,100));
+  }
+  await _oldDownloadAddon();
+  bar.style.width='100%';
+  txt.textContent='Complete!';
+  setTimeout(()=>{
+    ov.style.display='none';
+    showNotification('Export complete. Your download is ready.');
+  },700);
+};
+
+function createProject(){
+  const name = prompt('Project name:');
+  if(!name) return;
+  const projects = JSON.parse(localStorage.getItem('mcab_projects')||'[]');
+  projects.push({name:name,date:Date.now()});
+  localStorage.setItem('mcab_projects',JSON.stringify(projects));
+  alert('Project created: '+name);
+}
+
+loadProject();
+
+/* ────────── INIT ────────── */
+genAllUUIDs();
+S.panelOpen = true;
+renderAll();
+applyPanel();
+</script>
+
+<div id="exportOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#252526;padding:20px;border-radius:8px;width:320px;color:white">
+    <h3>Exporting Addon...</h3>
+    <div style="background:#333;height:16px;border-radius:8px;overflow:hidden">
+      <div id="exportBar" style="width:0%;height:100%;background:#4ade80"></div>
+    </div>
+    <div id="exportText" style="margin-top:8px">Preparing...</div>
+  </div>
+</div>
+
+</body>
+</html>
